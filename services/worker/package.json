@@ -1,0 +1,38 @@
+{
+  "name": "worker",
+  "version": "1.0.0",
+  "description": "Kafka consumer that builds llms.txt",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "test:generator": "ts-node src/test-generator.ts"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.5.0",
+    "express": "^4.18.2",
+    "fast-xml-parser": "^5.2.2",
+    "http-status-codes": "^2.3.0",
+    "kafkajs": "^2.2.4",
+    "openai": "^4.97.0",
+    "p-limit": "^6.2.0",
+    "pg": "^8.11.3",
+    "picomatch": "^4.0.2",
+    "redis": "^4.6.13",
+    "robots-txt-parser": "^2.0.3",
+    "sitemapper": "^3.2.20"
+  },
+  "devDependencies": {
+    "@types/cheerio": "^0.22.35",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.17.36",
+    "@types/pg": "^8.11.0",
+    "@types/picomatch": "^4.0.0",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,126 @@
+services:
+  api:
+    build: ./services/api
+    ports:
+      - "3000:3000"
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - PG_URL=postgres://user:pass@postgres:5432/db
+      - MAX_BULK_URLS=200
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+
+  frontend:
+    build: ./services/frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://api:3000
+      - NODE_ENV=production
+    depends_on:
+      - api
+  worker:
+    build: ./services/worker
+    ports:
+      - "3002-3007:3001" # Range of ports for multiple instances
+    environment:
+      - KAFKA_BROKER=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - PG_URL=postgres://user:pass@postgres:5432/db
+      - PORT=3001
+      - JOB_CONCURRENCY=60
+      - REQUEST_CONCURRENCY=10
+      - MAX_URLS=100
+      - MAX_DEPTH=4
+      - KAFKA_CONSUMER_MAX_WAIT_TIME_MS=100
+      - KAFKA_CONSUMER_MAX_BYTES=5242880
+      - ENABLE_CHATGPT_ENHANCEMENT=false
+      - OPENAI_API_KEY=NO_KEY
+    deploy:
+      replicas: 6 # One for each kafka partition
+      resources:
+        limits:
+          memory: 3G
+          cpus: "2.0"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+
+  scheduler:
+    build: ./services/scheduler
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      worker:
+        condition: service_started
+    environment:
+      - JOB_BATCH_SIZE=20
+      - POLLING_INTERVAL_MS=500
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_NUM_PARTITIONS: 6
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test:
+        ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./infra/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: db
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./infra/kafka/setup-topics.sh:/setup-topics.sh
+    command: ["bash", "/setup-topics.sh"]
+    restart: "no"

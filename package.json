@@ -1,0 +1,25 @@
+{
+  "name": "llms-txt-web-crawler",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "services/api",
+    "services/worker",
+    "services/frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build:all": "npm run build --workspaces",
+    "dev:api": "npm run dev --workspace=services/api",
+    "dev:worker": "npm run dev --workspace=services/worker",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:worker\"",
+    "start:all": "npm run start --workspaces",
+    "clean": "rimraf node_modules **/node_modules **/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "rimraf": "^5.0.5"
+  }
+}
+
+
